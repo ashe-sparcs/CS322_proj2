@@ -94,55 +94,6 @@ class ENfa:
     distinguishable = []
     belong_dict = {}
 
-    def __init__(self, ast):
-        if ast[0] == 'symbol':
-            self.state = ['q0', 'q1']
-            self.symbol = [ast[1]]
-            self.func_dict['q0'] = {}
-            self.func_dict['q1'] = {}
-            self.func_dict['q0'][ast[1]] = []
-            self.func_dict['q1'][ast[1]] = []
-            self.func_dict['q0'][ast[1]] = ['q1']
-            self.initial = ['q0']
-            self.final = ['q1']
-            self.todo_queue.append(self.e_closure(self.initial))
-            self.state_converting = list(self.todo_queue)
-        elif ast[0] == '*':
-            sub_enfa = ENfa(ast[1])
-            sub_enfa.shift(1)
-            state_len = len(sub_enfa.state)
-            self.initial = ['q0']
-            self.final = ['q'+str(state_len+1)]
-            self.state = sub_enfa.state + [self.initial[0], self.final[0]]
-            if '()' in sub_enfa.symbol:
-                self.symbol = sub_enfa.symbol
-            else:
-                self.symbol = sub_enfa.symbol + ['()']
-                for state in sub_enfa.state:
-                    sub_enfa.func_dict[state]['()'] = []
-            self.func_dict = sub_enfa.func_dict
-            self.func_dict[self.initial[0]] = {}
-            for sym in self.symbol:
-                self.func_dict[self.initial[0]][sym] = []
-            self.func_dict[self.initial[0]]['()'] = [self.final[0], sub_enfa.initial[0]]
-            self.func_dict[sub_enfa.final[0]]['()'] = [sub_enfa.initial[0], self.final[0]]
-            self.todo_queue.append(self.e_closure(self.initial))
-            self.state_converting = list(self.todo_queue)
-        elif ast[0] == '.':
-            lhs_enfa = ENfa(ast[1])
-            rhs_enfa = ENfa(ast[2])
-            rhs_enfa.shift(len(lhs_enfa.state))
-            self.initial = lhs_enfa.initial
-            self.final = rhs_enfa.final
-            self.state = lhs_enfa.state + rhs_enfa.state
-            self.symbol = list(set(lhs_enfa.symbol) | set(rhs_enfa.symbol))
-            if '()' not in lhs_enfa.symbol:
-                for state in lhs_enfa.state:
-                    lhs_enfa.func_dict[state]['()'] = []
-            lhs_enfa.func_dict[lhs_enfa.final[0]]['()'] = rhs_enfa.initial[0]
-            self.func_dict = {**lhs_enfa.func_dict, **rhs_enfa.func_dict}
-            print(self.func_dict)
-
     '''
     def __init__(self, state, symbol, func_string_list, initial, final):
         self.state = state
@@ -190,15 +141,12 @@ class ENfa:
                 func_dict_temp[shifted_state(state, shift)][sym] = []
                 for to_state in self.func_dict[state][sym]:
                     func_dict_temp[shifted_state(state, shift)][sym].append(shifted_state(to_state, shift))
-        self.func_dict = func_dict_temp
+        print(func_dict_temp)
+        self.func_dict = dict(func_dict_temp)
         self.state = [shifted_state(x, shift) for x in self.state]
         self.initial = [shifted_state(x, shift) for x in self.initial]
         self.final = [shifted_state(x, shift) for x in self.final]
         self.todo_queue = []
-        print(self.state)
-        print(self.initial)
-        print(self.final)
-        print(self.func_dict)
         self.todo_queue.append(self.e_closure(self.initial))
         self.state_converting = list(self.todo_queue)
 
@@ -373,7 +321,7 @@ class ENfa:
         print('State transition function')
         for q in my_sorted(list(self.func_dict.keys())):
             for sym in sorted(list(self.func_dict[q])):
-                for to_state in self.transition(q,sym):
+                for to_state in self.transition(q, sym):
                     print(q + ',' + sym + ',' + to_state)
         print('Initial state')
         print(','.join(self.initial))
@@ -432,6 +380,104 @@ def shifted_state(q, shift):
     return 'q'+str(int(q[1:])+shift)
 
 
+def make_enfa(ast):
+    self = ENfa()
+    if ast[0] == 'symbol':
+        self.state = ['q0', 'q1']
+        self.symbol = [ast[1]]
+        self.func_dict['q0'] = {}
+        self.func_dict['q1'] = {}
+        self.func_dict['q0'][ast[1]] = ['q1']
+        self.func_dict['q1'][ast[1]] = []
+        self.initial = ['q0']
+        self.final = ['q1']
+        self.todo_queue.append(self.e_closure(self.initial))
+        self.state_converting = list(self.todo_queue)
+    elif ast[0] == '*':
+        sub_enfa = make_enfa(ast[1])
+        sub_enfa.shift(1)
+        state_len = len(sub_enfa.state)
+        self.initial = ['q0']
+        self.final = ['q'+str(state_len+1)]
+        self.state = sub_enfa.state + [self.initial[0], self.final[0]]
+        self.state = [self.initial[0]] + sub_enfa.state + [self.final[0]]
+        if '()' in sub_enfa.symbol:
+            self.symbol = sub_enfa.symbol
+        else:
+            self.symbol = sub_enfa.symbol + ['()']
+        self.func_dict = dict(sub_enfa.func_dict)
+        self.func_dict[self.initial[0]] = {}
+        self.func_dict[self.final[0]] = {}
+        '''
+        for sym in self.symbol:
+            self.func_dict[self.initial[0]][sym] = []
+            self.func_dict[self.final[0]][sym] = []
+        '''
+        self.func_dict[self.initial[0]]['()'] = [sub_enfa.initial[0], self.final[0]]
+        self.func_dict[sub_enfa.final[0]]['()'] = [sub_enfa.initial[0], self.final[0]]
+        for state in self.state:
+            for sym in self.symbol:
+                if sym not in self.func_dict[state].keys():
+                    self.func_dict[state][sym] = []
+        self.todo_queue.append(self.e_closure(self.initial))
+        self.state_converting = list(self.todo_queue)
+    elif ast[0] == '.':
+        lhs_enfa = make_enfa(ast[1])
+        lhs_enfa.func_dict = dict(lhs_enfa.func_dict)  # ????????????????????????????
+        rhs_enfa = make_enfa(ast[2])
+        rhs_enfa.func_dict = dict(rhs_enfa.func_dict)
+        print(rhs_enfa.symbol)
+        rhs_enfa.shift(len(lhs_enfa.state))
+        self.initial = list(lhs_enfa.initial)
+        self.final = list(rhs_enfa.final)
+        self.state = list(lhs_enfa.state) + list(rhs_enfa.state)
+        self.symbol = list(set(lhs_enfa.symbol) | set(rhs_enfa.symbol))
+        self.symbol = sorted(self.symbol)
+        if '()' not in self.symbol:
+            self.symbol = self.symbol + ['()']
+        lhs_enfa.func_dict[lhs_enfa.final[0]]['()'] = [rhs_enfa.initial[0]]
+        print(rhs_enfa.func_dict)
+        self.func_dict = {**lhs_enfa.func_dict, **rhs_enfa.func_dict}
+        for state in self.state:
+            for sym in self.symbol:
+                if sym not in self.func_dict[state].keys():
+                    self.func_dict[state][sym] = []
+        self.todo_queue.append(self.e_closure(self.initial))
+        self.state_converting = list(self.todo_queue)
+    elif ast[0] == '+':
+        lhs_enfa = make_enfa(ast[1])
+        lhs_enfa.func_dict = dict(lhs_enfa.func_dict)  # ????????????????????????????
+        lhs_enfa.shift(1)
+        rhs_enfa = make_enfa(ast[2])
+        rhs_enfa.shift(1+len(lhs_enfa.state))
+        self.initial = ['q0']
+        self.final = ['q'+str(len(lhs_enfa.state)+len(rhs_enfa.state)+1)]
+        self.state = self.initial + lhs_enfa.state + rhs_enfa.state + self.final
+        self.symbol = list(set(lhs_enfa.symbol) | set(rhs_enfa.symbol))
+        if '()' not in lhs_enfa.symbol:
+            for state in lhs_enfa.state:
+                lhs_enfa.func_dict[state]['()'] = []
+        if '()' not in rhs_enfa.symbol:
+            for state in rhs_enfa.state:
+                rhs_enfa.func_dict[state]['()'] = []
+        lhs_enfa.func_dict[lhs_enfa.final[0]]['()'] = [self.final[0]]
+        rhs_enfa.func_dict[rhs_enfa.final[0]]['()'] = [self.final[0]]
+        self.func_dict = {**lhs_enfa.func_dict, **rhs_enfa.func_dict}
+        self.func_dict[self.initial[0]] = {}
+        self.func_dict[self.final[0]] = {}
+        for state in self.state:
+            for sym in self.symbol:
+                if sym not in self.func_dict[state].keys():
+                    self.func_dict[state][sym] = []
+        self.func_dict[self.initial[0]]['()'] = [lhs_enfa.initial[0], rhs_enfa.initial[0]]
+        self.todo_queue.append(self.e_closure(self.initial))
+        self.state_converting = list(self.todo_queue)
+    print('@@@@@@@@@@@@@@@' + str(ast))
+    print(self.func_dict)
+    self.print_self_enfa()
+    return self
+
+
 # Build the lexer
 lexer = lex.lex()
 
@@ -450,5 +496,5 @@ print(s)
 result = parser.parse(s)
 print(result)
 
-result_enfa = ENfa(result)
-result_enfa.print_self_enfa()
+result_enfa = make_enfa(result)
+# result_enfa.print_self_enfa()
