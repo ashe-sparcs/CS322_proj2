@@ -94,45 +94,54 @@ class ENfa:
     distinguishable = []
     belong_dict = {}
 
-    def __init__(self, s):
-        if s[0] == 'symbol':
+    def __init__(self, ast):
+        if ast[0] == 'symbol':
             self.state = ['q0', 'q1']
-            self.symbol = [s[1]]
+            self.symbol = [ast[1]]
             self.func_dict['q0'] = {}
             self.func_dict['q1'] = {}
-            self.func_dict['q0'][s[1]] = ['q1']
-            self.func_dict['q1'][s[1]] = []
+            self.func_dict['q0'][ast[1]] = []
+            self.func_dict['q1'][ast[1]] = []
+            self.func_dict['q0'][ast[1]] = ['q1']
             self.initial = ['q0']
             self.final = ['q1']
             self.todo_queue.append(self.e_closure(self.initial))
             self.state_converting = list(self.todo_queue)
-        elif s[0] == '*':
-            sub_enfa = ENfa(s[1])
+        elif ast[0] == '*':
+            sub_enfa = ENfa(ast[1])
+            sub_enfa.shift(1)
             state_len = len(sub_enfa.state)
-            self.initial = ['q'+str(state_len)]
+            self.initial = ['q0']
             self.final = ['q'+str(state_len+1)]
             self.state = sub_enfa.state + [self.initial[0], self.final[0]]
             if '()' in sub_enfa.symbol:
                 self.symbol = sub_enfa.symbol
             else:
                 self.symbol = sub_enfa.symbol + ['()']
+                for state in sub_enfa.state:
+                    sub_enfa.func_dict[state]['()'] = []
+            self.func_dict = sub_enfa.func_dict
             self.func_dict[self.initial[0]] = {}
-            self.func_dict[self.final[0]] = {}
             for sym in self.symbol:
                 self.func_dict[self.initial[0]][sym] = []
-                self.func_dict[self.final[0]][sym] = []
-            self.func_dict[self.initial[0]]['()'] = [sub_enfa.initial[0], self.final[0]]
-            for state in sub_enfa.state:
-                if '()' not in self.func_dict[state].keys():
-                    self.func_dict[state]['()'] = []
+            self.func_dict[self.initial[0]]['()'] = [self.final[0], sub_enfa.initial[0]]
             self.func_dict[sub_enfa.final[0]]['()'] = [sub_enfa.initial[0], self.final[0]]
             self.todo_queue.append(self.e_closure(self.initial))
             self.state_converting = list(self.todo_queue)
-        '''
-        elif s[0] == '.':
-            lhs_enfa = ENfa(s[1])
-            rhs_enfa = ENfa(s[2])
-        '''
+        elif ast[0] == '.':
+            lhs_enfa = ENfa(ast[1])
+            rhs_enfa = ENfa(ast[2])
+            rhs_enfa.shift(len(lhs_enfa.state))
+            self.initial = lhs_enfa.initial
+            self.final = rhs_enfa.final
+            self.state = lhs_enfa.state + rhs_enfa.state
+            self.symbol = list(set(lhs_enfa.symbol) | set(rhs_enfa.symbol))
+            if '()' not in lhs_enfa.symbol:
+                for state in lhs_enfa.state:
+                    lhs_enfa.func_dict[state]['()'] = []
+            lhs_enfa.func_dict[lhs_enfa.final[0]]['()'] = rhs_enfa.initial[0]
+            self.func_dict = {**lhs_enfa.func_dict, **rhs_enfa.func_dict}
+            print(self.func_dict)
 
     '''
     def __init__(self, state, symbol, func_string_list, initial, final):
@@ -172,6 +181,26 @@ class ENfa:
                 if transition:
                     stack.extend(set(self.transition(start, 'E')) - visited)
         return visited
+
+    def shift(self, shift):
+        func_dict_temp = {}
+        for state in self.state:
+            func_dict_temp[shifted_state(state, shift)] = {}
+            for sym in self.symbol:
+                func_dict_temp[shifted_state(state, shift)][sym] = []
+                for to_state in self.func_dict[state][sym]:
+                    func_dict_temp[shifted_state(state, shift)][sym].append(shifted_state(to_state, shift))
+        self.func_dict = func_dict_temp
+        self.state = [shifted_state(x, shift) for x in self.state]
+        self.initial = [shifted_state(x, shift) for x in self.initial]
+        self.final = [shifted_state(x, shift) for x in self.final]
+        self.todo_queue = []
+        print(self.state)
+        print(self.initial)
+        print(self.final)
+        print(self.func_dict)
+        self.todo_queue.append(self.e_closure(self.initial))
+        self.state_converting = list(self.todo_queue)
 
     def rename_converting(self):
         # renaming
@@ -397,6 +426,10 @@ def my_sorted(state_list):
 
 def xor(b1, b2):
     return (b1 and not b2) or (not b1 and b2)
+
+
+def shifted_state(q, shift):
+    return 'q'+str(int(q[1:])+shift)
 
 
 # Build the lexer
