@@ -8,29 +8,24 @@ import ply.lex as lex
 
 # List of token names.   This is always required
 tokens = (
-   'NUMBER',
+   'SYMBOL',
    'PLUS',
-   'MINUS',
    'TIMES',
-   'DIVIDE',
    'LPAREN',
    'RPAREN',
 )
 
 # Regular expression rules for simple tokens
 t_PLUS    = r'\+'
-t_MINUS   = r'-'
 t_TIMES   = r'\*'
-t_DIVIDE  = r'/'
 t_LPAREN  = r'\('
 t_RPAREN  = r'\)'
 
 # A regular expression rule with some action code
 
 
-def t_NUMBER(t):
-    r'\d+'
-    t.value = int(t.value)
+def t_SYMBOL(t):
+    r'[0-9a-zA-Z]'
     return t
 
 # Define a rule so we can track line numbers
@@ -55,8 +50,7 @@ lexer = lex.lex()
 
 # Test it out
 data = '''
-3 + 4 * 10
-  + -20 *2
+ba*(a+b)
 '''
 
 # Give the lexer some input
