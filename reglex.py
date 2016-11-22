@@ -1,8 +1,8 @@
 # ------------------------------------------------------------
-# calclex.py
+# reglex.py
 #
-# tokenizer for a simple expression evaluator for
-# numbers and +,-,*,/
+# tokenizer for a simple regular expression evaluator for
+# symbols and +,*
 # ------------------------------------------------------------
 import ply.lex as lex
 
