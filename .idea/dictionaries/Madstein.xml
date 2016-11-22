@@ -2,6 +2,8 @@
   <dictionary name="Madstein">
     <words>
       <w>enfa</w>
+      <w>gstate</w>
+      <w>gsym</w>
     </words>
   </dictionary>
 </component>

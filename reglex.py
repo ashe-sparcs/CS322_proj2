@@ -128,9 +128,9 @@ class ENfa:
             vertex = stack.pop()
             if vertex not in visited:
                 visited.add(vertex)
-                transition = self.transition(start, 'E')
+                transition = self.transition(start, '()')
                 if transition:
-                    stack.extend(set(self.transition(start, 'E')) - visited)
+                    stack.extend(set(self.transition(start, '()')) - visited)
         return visited
 
     def shift(self, shift):
@@ -362,9 +362,15 @@ class Dfa(ENfa):
 
 
 def my_sorted(state_list):
+    # state_list_stored = list(state_list)
     if False in state_list:
         return state_list
     for i in range(len(state_list)):
+        '''
+        print('state list : ')
+        print(state_list)
+        '''
+        # state_list_stored[i] = int(state_list[i][1:])
         state_list[i] = int(state_list[i][1:])
     state_list = sorted(state_list)
     for i in range(len(state_list)):
@@ -391,8 +397,6 @@ def make_enfa(ast):
         self.func_dict['q1'][ast[1]] = []
         self.initial = ['q0']
         self.final = ['q1']
-        self.todo_queue.append(self.e_closure(self.initial))
-        self.state_converting = list(self.todo_queue)
     elif ast[0] == '*':
         sub_enfa = make_enfa(ast[1])
         sub_enfa.shift(1)
@@ -419,8 +423,6 @@ def make_enfa(ast):
             for sym in self.symbol:
                 if sym not in self.func_dict[state].keys():
                     self.func_dict[state][sym] = []
-        self.todo_queue.append(self.e_closure(self.initial))
-        self.state_converting = list(self.todo_queue)
     elif ast[0] == '.':
         lhs_enfa = make_enfa(ast[1])
         lhs_enfa.func_dict = dict(lhs_enfa.func_dict)  # ????????????????????????????
@@ -440,8 +442,6 @@ def make_enfa(ast):
             for sym in self.symbol:
                 if sym not in self.func_dict[state].keys():
                     self.func_dict[state][sym] = []
-        self.todo_queue.append(self.e_closure(self.initial))
-        self.state_converting = list(self.todo_queue)
     elif ast[0] == '+':
         lhs_enfa = make_enfa(ast[1])
         lhs_enfa.func_dict = dict(lhs_enfa.func_dict)  # ????????????????????????????
@@ -471,11 +471,6 @@ def make_enfa(ast):
             for sym in self.symbol:
                 if sym not in self.func_dict[state].keys():
                     self.func_dict[state][sym] = []
-        self.todo_queue.append(self.e_closure(self.initial))
-        self.state_converting = list(self.todo_queue)
-    print('@@@@@@@@@@@@@@@' + str(ast))
-    print(self.func_dict)
-    self.print_self_enfa()
     return self
 
 
@@ -486,16 +481,29 @@ lexer = lex.lex()
 parser = yacc.yacc()
 
 # Take user input
-s = input('regex > ')
+regex_input = input('regex > ')
 
 # Give the lexer some input. print lexed result.
-lexer.input(s)
+lexer.input(regex_input)
 s = ''.join([x.value for x in lexer])
-print(s)
+print(regex_input)
 
 # Parse the lexed string to make AST.
-result = parser.parse(s)
+result = parser.parse(regex_input)
 print(result)
 
 result_enfa = make_enfa(result)
-# result_enfa.print_self_enfa()
+# key value of which is []. remove it.
+for gstate in result_enfa.state:
+    for gsym in result_enfa.symbol:
+        if not result_enfa.func_dict[gstate][gsym]:
+            del result_enfa.func_dict[gstate][gsym]
+result_enfa.symbol.remove('()')
+result_enfa.todo_queue = []
+result_enfa.todo_queue.append(result_enfa.e_closure(result_enfa.initial))
+result_enfa.state_converting = list(result_enfa.todo_queue)
+result_enfa.print_self_enfa()
+result_enfa.convert_to_dfa()
+result_enfa.minimize()
+result_enfa.print_self()
+
