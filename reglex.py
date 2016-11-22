@@ -79,15 +79,6 @@ def p_expression_concat(p):
     p[0] = ('.', p[1], p[2])
 
 
-
-
-
-
-'''
-def make_enfa(s):
-    if s[0] == 'symbol':
-'''
-
 class ENfa:
     state = []
     symbol = []
@@ -103,6 +94,47 @@ class ENfa:
     distinguishable = []
     belong_dict = {}
 
+    def __init__(self, s):
+        if s[0] == 'symbol':
+            self.state = ['q0', 'q1']
+            self.symbol = [s[1]]
+            self.func_dict['q0'] = {}
+            self.func_dict['q1'] = {}
+            self.func_dict['q0'][s[1]] = ['q1']
+            self.func_dict['q1'][s[1]] = []
+            self.initial = ['q0']
+            self.final = ['q1']
+            self.todo_queue.append(self.e_closure(self.initial))
+            self.state_converting = list(self.todo_queue)
+        elif s[0] == '*':
+            sub_enfa = ENfa(s[1])
+            state_len = len(sub_enfa.state)
+            self.initial = ['q'+str(state_len)]
+            self.final = ['q'+str(state_len+1)]
+            self.state = sub_enfa.state + [self.initial[0], self.final[0]]
+            if '()' in sub_enfa.symbol:
+                self.symbol = sub_enfa.symbol
+            else:
+                self.symbol = sub_enfa.symbol + ['()']
+            self.func_dict[self.initial[0]] = {}
+            self.func_dict[self.final[0]] = {}
+            for sym in self.symbol:
+                self.func_dict[self.initial[0]][sym] = []
+                self.func_dict[self.final[0]][sym] = []
+            self.func_dict[self.initial[0]]['()'] = [sub_enfa.initial[0], self.final[0]]
+            for state in sub_enfa.state:
+                if '()' not in self.func_dict[state].keys():
+                    self.func_dict[state]['()'] = []
+            self.func_dict[sub_enfa.final[0]]['()'] = [sub_enfa.initial[0], self.final[0]]
+            self.todo_queue.append(self.e_closure(self.initial))
+            self.state_converting = list(self.todo_queue)
+        '''
+        elif s[0] == '.':
+            lhs_enfa = ENfa(s[1])
+            rhs_enfa = ENfa(s[2])
+        '''
+
+    '''
     def __init__(self, state, symbol, func_string_list, initial, final):
         self.state = state
         self.symbol = symbol
@@ -117,6 +149,7 @@ class ENfa:
         self.final = final
         self.todo_queue.append(self.e_closure(self.initial))
         self.state_converting = list(self.todo_queue)
+    '''
 
     def transition(self, from_state, input_symbol):
         if input_symbol in self.func_dict[from_state]:
@@ -303,6 +336,21 @@ class ENfa:
         print('Final state')
         print(','.join(self.final))
 
+    def print_self_enfa(self):
+        print('State')
+        print(','.join(self.state))
+        print('Input symbol')
+        print(','.join(self.symbol))
+        print('State transition function')
+        for q in my_sorted(list(self.func_dict.keys())):
+            for sym in sorted(list(self.func_dict[q])):
+                for to_state in self.transition(q,sym):
+                    print(q + ',' + sym + ',' + to_state)
+        print('Initial state')
+        print(','.join(self.initial))
+        print('Final state')
+        print(','.join(self.final))
+
     def print_self_file(self):
         f = open("output_"+sys.argv[1], 'w')
         f.write('State')
@@ -328,6 +376,29 @@ class ENfa:
         f.write(','.join(self.final))
         f.close()
 
+
+class Dfa(ENfa):
+    def __init__(self, state, symbol, func_string_list, initial, final):
+        ENfa.__init__(self, state, symbol, func_string_list, initial, final)
+        for key in list(self.func_dict.keys()):
+            del self.func_dict[key]['E']
+
+
+def my_sorted(state_list):
+    if False in state_list:
+        return state_list
+    for i in range(len(state_list)):
+        state_list[i] = int(state_list[i][1:])
+    state_list = sorted(state_list)
+    for i in range(len(state_list)):
+        state_list[i] = 'q' + str(state_list[i])
+    return state_list
+
+
+def xor(b1, b2):
+    return (b1 and not b2) or (not b1 and b2)
+
+
 # Build the lexer
 lexer = lex.lex()
 
@@ -345,3 +416,6 @@ print(s)
 # Parse the lexed string to make AST.
 result = parser.parse(s)
 print(result)
+
+result_enfa = ENfa(result)
+result_enfa.print_self_enfa()
