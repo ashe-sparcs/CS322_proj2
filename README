@@ -1,0 +1,100 @@
+20140679 전산학부 김재성
+
+테스트 환경 : 윈도우 10 x64
+개발 언어 : Python 3.5.2
+PLY 버전 : 3.9
+컴파일 방법 : 필요 없습니다.
+실행 방법 : python reglex.py [정규식 파일경로]
+
+reglex.py 입출력 예시
+main.py와 같은 경로에 regex_pdf.txt 가 존재하는 경우(내용은 프로젝트 안내에 나온 파일과 동일)
+    > python reglex.py regex_pdf.txt
+로 실행시키면 폴더 내에 output_regex_pdf.txt가 생성되고 그 내용은 프로젝트 안내에 있는 모범답안(m-dfa.txt)과 같습니다.
+
+PLY 입력/출력/사용방법 예시
+import ply.lex as lex
+import ply.yacc as yacc
+# whitespace 무시
+t_ignore  = ' \t'
+# 토큰 이름의 리스트
+tokens = (
+   'SYMBOL',
+   'PLUS',
+   'ASTERISK',
+   'LPAREN',
+   'RPAREN',
+)
+# 토큰에 대응되는 정규식 규칙
+t_PLUS       = r'\+'
+t_ASTERISK   = r'\*'
+t_LPAREN     = r'\('
+t_RPAREN     = r'\)'
+# Lex 함수
+# 정의 맨 첫번째 줄의 정규식 패턴에 해당하는 스트링이 들어왔을 경우 적절한 값을 리턴합니다. 토큰에 대응되는 정규식 규칙에 symbol이 없으므로 따로 정의해주었습니다.
+def t_SYMBOL(t):
+    r"""[0-9a-zA-Z] | \(\)"""
+    return t
+# 패턴을 이용하여 줄 수를 계산합니다.
+def t_newline(t):
+    r"""\n+"""
+    t.lexer.lineno += len(t.value)
+# Error handling rule
+def t_error(t):
+    print("Illegal character '%s'" % t.value[0])
+    t.lexer.skip(1)
+# Yacc functions
+# 연산자의 우선순위와 left-associative, right-associative을 지정합니다. GROUP
+precedence = (
+    ('left', 'CONCAT'),
+    ('left', 'PLUS'),
+    ('right', 'ASTERISK'),
+    ('nonassoc', 'GROUP'),
+)
+# Error rule for syntax errors
+def p_error(p):
+    print("Syntax error in input!")
+def p_expression_plus(p):
+    """expression : expression PLUS expression"""
+
+    p[0] = (p[2], p[1], p[3])
+def p_expression_asterisk(p):
+    """expression : expression ASTERISK"""
+    p[0] = (p[2], p[1])
+def p_expression_group(p):
+    """expression : LPAREN expression RPAREN %prec GROUP"""
+    p[0] = p[2]
+def p_expression_symbol(p):
+    """expression : SYMBOL"""
+    p[0] = ('symbol', p[1])
+def p_expression_concat(p):
+    """expression : expression expression %prec CONCAT"""
+    p[0] = ('.', p[1], p[2])
+# Build the lexer
+lexer = lex.lex()
+regex_input = '''
+b a * (
+a+b)
+'''
+# Give the lexer some input. print lexed result.
+lexer.input(regex_input)
+regex_input = ''.join([x.value for x in lexer])
+print(regex_input)
+
+>>>>>>>>>>>결과 : ba*(a+b)
+
+# Build the parser
+parser = yacc.yacc()
+# Parse the lexed string to make AST.
+result = parser.parse(regex_input)
+print(result)
+
+>>>>>>>>>>>결과 : ('.', ('.', ('symbol', 'b'), ('*', ('symbol', 'a'))), ('+', ('symbol', 'a'), ('symbol', 'b')))
+
+스크린샷은 사진으로 별도 첨부.
+실행화면1.png : 터미널에서의 main.py 실행 방법입니다. 표준 출력이 아니라 파일 출력으로 결과를 생성하기 때문에 표준출력으로 나오는 결과는 디버깅용 프린트문과 실행 결과 등이 섞여있을 수 있습니다.
+실행화면2.png : 파일로 출력된 output_regex_pdf.txt입니다. 프로젝트 안내의 예시 re.txt와 동일한 내용의 regex_pdf.txt를 사용하였기 때문에 나오는 결과도 동일합니다.
+실행화면3.png : 정규식 인풋을 각각 lexer, parser를 거친 결과입니다.
+
+구현 정책(중요합니다)
+1. 결과 파일에 스테이트를 q0, q1, ... 로 나타내었습니다. q뒤에 붙는 숫자는 0부터 시작하여 연속된 정수입니다.
+2. dead state는 제외하도록 구현했습니다. 따라서 dead state를 포함시켜 구현한 것보다 결과의 스테이트 개수가 하나 작습니다. 트랜지션은 데드 스테이트를 포함한 트랜지션만 제외한 것과 같습니다.

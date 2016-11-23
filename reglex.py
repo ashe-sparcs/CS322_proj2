@@ -467,7 +467,6 @@ parser = yacc.yacc()
 regex_filename = sys.argv[1]
 regex_file = open(regex_filename, 'r')
 regex_input = regex_file.readline()
-
 # Give the lexer some input. print lexed result.
 lexer.input(regex_input)
 regex_input = ''.join([x.value for x in lexer])
@@ -483,7 +482,8 @@ for gstate in result_enfa.state:
     for gsym in result_enfa.symbol:
         if not result_enfa.func_dict[gstate][gsym]:
             del result_enfa.func_dict[gstate][gsym]
-result_enfa.symbol.remove('()')
+if '()' in result_enfa.symbol:
+    result_enfa.symbol.remove('()')
 result_enfa.todo_queue = []
 result_enfa.todo_queue.append(result_enfa.e_closure(result_enfa.initial))
 result_enfa.state_converting = list(result_enfa.todo_queue)
