@@ -93,8 +93,23 @@ print(result)
 스크린샷은 사진으로 별도 첨부.
 실행화면1.png : 터미널에서의 main.py 실행 방법입니다. 표준 출력이 아니라 파일 출력으로 결과를 생성하기 때문에 표준출력으로 나오는 결과는 디버깅용 프린트문과 실행 결과 등이 섞여있을 수 있습니다.
 실행화면2.png : 파일로 출력된 output_regex_pdf.txt입니다. 프로젝트 안내의 예시 re.txt와 동일한 내용의 regex_pdf.txt를 사용하였기 때문에 나오는 결과도 동일합니다.
-실행화면3.png : 정규식 인풋을 각각 lexer, parser를 거친 결과입니다.
 
 구현 정책(중요합니다)
 1. 결과 파일에 스테이트를 q0, q1, ... 로 나타내었습니다. q뒤에 붙는 숫자는 0부터 시작하여 연속된 정수입니다.
+
 2. dead state는 제외하도록 구현했습니다. 따라서 dead state를 포함시켜 구현한 것보다 결과의 스테이트 개수가 하나 작습니다. 트랜지션은 데드 스테이트를 포함한 트랜지션만 제외한 것과 같습니다.
+
+3. empty string이 regex input으로 들어온 경우의 결과에 대해서
+State
+q0
+Input symbol
+
+State transition function
+Initial state
+q0
+Final state
+q0
+위의 결과는 시작 스테이트와 끝 스테이트가 q0로 같고, 트랜지션이 없음을 의미한다. 위 오토마타에 empty string 이외의 문자열을 대입하면 시작점 q0에서 해당하는 트랜지션이 존재하지 않으므로 오토마타가 죽어버리게 되어 해당 string을 accept하지 않는다. dead state를 제외하여 오토마타를 구현했으므로 이러한 결과가 나왔습니다.
+
+4. empty string '()'을 SYMBOL 토큰으로 정의한 이유
+RE를 e-nfa로 바꾸는 과정에서 epsilon과 single symbol은 그 방식이 완전히 동일하므로 둘다 symbol로 처리하여 함수의 같은 if 분기를 통해 e-nfa로 변환할 수 있도록 했습니다.
