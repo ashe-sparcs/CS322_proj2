@@ -125,12 +125,16 @@ class ENfa:
     def dfs(self, start):
         visited, stack = set(), [start]
         while stack:
+            print('visited')
+            print(visited)
+            print('stack')
+            print(stack)
             vertex = stack.pop()
             if vertex not in visited:
                 visited.add(vertex)
                 transition = self.transition(start, '()')
                 if transition:
-                    stack.extend(set(self.transition(start, '()')) - visited)
+                    stack.extend(set(transition) - visited)
         return visited
 
     def shift(self, shift):
@@ -495,6 +499,7 @@ result_enfa.todo_queue.append(result_enfa.e_closure(result_enfa.initial))
 result_enfa.state_converting = list(result_enfa.todo_queue)
 print('ENFA')
 print(result_enfa.func_dict)
+print(result_enfa.todo_queue)
 result_enfa.print_self_enfa()
 result_enfa.convert_to_dfa()
 print('DFA')
