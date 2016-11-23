@@ -31,13 +31,13 @@ t_RPAREN     = r'\)'
 # Lex functions
 # A regular expression rule with some action code
 def t_SYMBOL(t):
-    r'[0-9a-zA-Z] | \(\)'
+    r"""[0-9a-zA-Z] | \(\)"""
     return t
 
 
 # Define a rule so we can track line numbers
 def t_newline(t):
-    r'\n+'
+    r"""\n+"""
     t.lexer.lineno += len(t.value)
 
 
@@ -54,28 +54,28 @@ def p_error(p):
 
 
 def p_expression_plus(p):
-    '''expression : expression PLUS expression'''
+    """expression : expression PLUS expression"""
 
     p[0] = (p[2], p[1], p[3])
 
 
 def p_expression_asterisk(p):
-    '''expression : expression ASTERISK'''
+    """expression : expression ASTERISK"""
     p[0] = (p[2], p[1])
 
 
 def p_expression_group(p):
-    'expression : LPAREN expression RPAREN'
+    """expression : LPAREN expression RPAREN"""
     p[0] = p[2]
 
 
 def p_expression_symbol(p):
-    'expression : SYMBOL'
+    """expression : SYMBOL"""
     p[0] = ('symbol', p[1])
 
 
 def p_expression_concat(p):
-    'expression : expression expression'
+    """expression : expression expression"""
     p[0] = ('.', p[1], p[2])
 
 
@@ -117,10 +117,10 @@ class ENfa:
         return False
 
     def e_closure(self, substate):
-        result = set()
+        e_closure_result = set()
         for ss in substate:
-            result = result | self.dfs(ss)
-        return list(result)
+            e_closure_result = e_closure_result | self.dfs(ss)
+        return list(e_closure_result)
 
     def dfs(self, start):
         visited, stack = set(), [start]
@@ -141,7 +141,6 @@ class ENfa:
                 func_dict_temp[shifted_state(state, shift)][sym] = []
                 for to_state in self.func_dict[state][sym]:
                     func_dict_temp[shifted_state(state, shift)][sym].append(shifted_state(to_state, shift))
-        print(func_dict_temp)
         self.func_dict = dict(func_dict_temp)
         self.state = [shifted_state(x, shift) for x in self.state]
         self.initial = [shifted_state(x, shift) for x in self.initial]
@@ -175,8 +174,8 @@ class ENfa:
             if self.initial[0] in s_list:
                 self.initial = []
                 self.initial.append(self.state[self.state_converting.index(s_list)])
-            for s in s_list:
-                if s in final_copy:
+            for s_elem in s_list:
+                if s_elem in final_copy:
                     self.final.append(self.state[self.state_converting.index(s_list)])
 
     def rename_aggregating(self):
@@ -274,8 +273,6 @@ class ENfa:
         self.state_aggregating = [set(i) for i in self.indistinguishable if i]
         self.find_intersection(self.state_aggregating)
         self.state_aggregating = [list(i) for i in self.state_aggregating if i]
-        print('self.state_aggregating : ')
-        print(self.state_aggregating)
         for s in self.state:
             if s not in sum(self.indistinguishable, []):
                 self.state_aggregating.append([s])
@@ -287,8 +284,6 @@ class ENfa:
             for sym in self.symbol:
                 if self.transition(substate[0], sym):
                     self.func_dict_aggregating[tuple(substate)][sym] = self.belong_dict[self.transition(substate[0], sym)]
-        print('self.func_dict_aggregating : ')
-        print(self.func_dict_aggregating)
         self.rename_aggregating()
 
     def is_distinguishable(self, pair):
@@ -358,7 +353,7 @@ class Dfa(ENfa):
     def __init__(self, state, symbol, func_string_list, initial, final):
         ENfa.__init__(self, state, symbol, func_string_list, initial, final)
         for key in list(self.func_dict.keys()):
-            del self.func_dict[key]['E']
+            del self.func_dict[key]['()']
 
 
 def my_sorted(state_list):
@@ -366,10 +361,6 @@ def my_sorted(state_list):
     if False in state_list:
         return state_list
     for i in range(len(state_list)):
-        '''
-        print('state list : ')
-        print(state_list)
-        '''
         # state_list_stored[i] = int(state_list[i][1:])
         state_list[i] = int(state_list[i][1:])
     state_list = sorted(state_list)
@@ -406,9 +397,9 @@ def make_enfa(ast):
         self.state = sub_enfa.state + [self.initial[0], self.final[0]]
         self.state = [self.initial[0]] + sub_enfa.state + [self.final[0]]
         if '()' in sub_enfa.symbol:
-            self.symbol = sub_enfa.symbol
+            self.symbol = list(sub_enfa.symbol)
         else:
-            self.symbol = sub_enfa.symbol + ['()']
+            self.symbol = list(sub_enfa.symbol) + ['()']
         self.func_dict = dict(sub_enfa.func_dict)
         self.func_dict[self.initial[0]] = {}
         self.func_dict[self.final[0]] = {}
@@ -502,8 +493,15 @@ result_enfa.symbol.remove('()')
 result_enfa.todo_queue = []
 result_enfa.todo_queue.append(result_enfa.e_closure(result_enfa.initial))
 result_enfa.state_converting = list(result_enfa.todo_queue)
+print('ENFA')
+print(result_enfa.func_dict)
 result_enfa.print_self_enfa()
 result_enfa.convert_to_dfa()
+print('DFA')
+print(result_enfa.func_dict)
+result_enfa.print_self()
 result_enfa.minimize()
+print('MDFA')
+print(result_enfa.func_dict)
 result_enfa.print_self()
 
