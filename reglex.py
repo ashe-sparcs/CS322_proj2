@@ -48,6 +48,12 @@ def t_error(t):
 
 
 # Yacc functions
+precedence = (
+    ('left', 'CONCAT'),
+    ('left', 'PLUS'),
+    ('right', 'ASTERISK'),
+    ('nonassoc', 'GROUP'),
+)
 # Error rule for syntax errors
 def p_error(p):
     print("Syntax error in input!")
@@ -65,7 +71,7 @@ def p_expression_asterisk(p):
 
 
 def p_expression_group(p):
-    """expression : LPAREN expression RPAREN"""
+    """expression : LPAREN expression RPAREN %prec GROUP"""
     p[0] = p[2]
 
 
@@ -75,7 +81,7 @@ def p_expression_symbol(p):
 
 
 def p_expression_concat(p):
-    """expression : expression expression"""
+    """expression : expression expression %prec CONCAT"""
     p[0] = ('.', p[1], p[2])
 
 
@@ -94,23 +100,6 @@ class ENfa:
     distinguishable = []
     belong_dict = {}
 
-    '''
-    def __init__(self, state, symbol, func_string_list, initial, final):
-        self.state = state
-        self.symbol = symbol
-        for q in state:
-            self.func_dict[q] = {}
-        for func_string in func_string_list:
-            func_string_split = func_string.split(',')
-            if func_string_split[1] not in self.func_dict[func_string_split[0]].keys():
-                self.func_dict[func_string_split[0]][func_string_split[1]] = []
-            self.func_dict[func_string_split[0]][func_string_split[1]].append(func_string_split[2])
-        self.initial = list(initial)
-        self.final = final
-        self.todo_queue.append(self.e_closure(self.initial))
-        self.state_converting = list(self.todo_queue)
-    '''
-
     def transition(self, from_state, input_symbol):
         if input_symbol in self.func_dict[from_state]:
             return self.func_dict[from_state][input_symbol]
@@ -125,14 +114,10 @@ class ENfa:
     def dfs(self, start):
         visited, stack = set(), [start]
         while stack:
-            print('visited')
-            print(visited)
-            print('stack')
-            print(stack)
             vertex = stack.pop()
             if vertex not in visited:
                 visited.add(vertex)
-                transition = self.transition(start, '()')
+                transition = self.transition(vertex, '()')
                 if transition:
                     stack.extend(set(transition) - visited)
         return visited
@@ -476,11 +461,16 @@ lexer = lex.lex()
 parser = yacc.yacc()
 
 # Take user input
-regex_input = input('regex > ')
+# regex_input = input('regex > ')
+
+# Take file input
+regex_filename = sys.argv[1]
+regex_file = open(regex_filename, 'r')
+regex_input = regex_file.readline()
 
 # Give the lexer some input. print lexed result.
 lexer.input(regex_input)
-s = ''.join([x.value for x in lexer])
+regex_input = ''.join([x.value for x in lexer])
 print(regex_input)
 
 # Parse the lexed string to make AST.
@@ -497,16 +487,8 @@ result_enfa.symbol.remove('()')
 result_enfa.todo_queue = []
 result_enfa.todo_queue.append(result_enfa.e_closure(result_enfa.initial))
 result_enfa.state_converting = list(result_enfa.todo_queue)
-print('ENFA')
-print(result_enfa.func_dict)
-print(result_enfa.todo_queue)
-result_enfa.print_self_enfa()
 result_enfa.convert_to_dfa()
-print('DFA')
-print(result_enfa.func_dict)
-result_enfa.print_self()
 result_enfa.minimize()
-print('MDFA')
-print(result_enfa.func_dict)
 result_enfa.print_self()
+result_enfa.print_self_file()
 
