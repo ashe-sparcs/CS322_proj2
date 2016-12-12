@@ -49,14 +49,12 @@ def t_error(t):
 
 # Yacc functions
 precedence = (
-    ('left', 'CONCAT'),
     ('left', 'PLUS'),
-    ('right', 'ASTERISK'),
-    ('nonassoc', 'GROUP'),
+    ('left', 'CONCAT'),
+    ('left', 'ASTERISK'),
 )
-# Error rule for syntax errors
-def p_error(p):
-    print("Syntax error in input!")
+
+
 
 
 def p_expression_plus(p):
@@ -65,24 +63,41 @@ def p_expression_plus(p):
     p[0] = (p[2], p[1], p[3])
 
 
-def p_expression_asterisk(p):
-    """expression : expression ASTERISK"""
-    p[0] = (p[2], p[1])
+def p_expression_term(p):
+    'expression : term'
+    p[0] = p[1]
 
 
-def p_expression_group(p):
-    """expression : LPAREN expression RPAREN %prec GROUP"""
-    p[0] = p[2]
+def p_term_concat(p):
+    """term : term factor %prec CONCAT"""
+    p[0] = ('.', p[1], p[2])
 
 
-def p_expression_symbol(p):
-    """expression : SYMBOL"""
+def p_term_factor(p):
+    'term : factor'
+    p[0] = p[1]
+
+
+def p_factor_symbol(p):
+    'factor : SYMBOL'
     p[0] = ('symbol', p[1])
 
 
-def p_expression_concat(p):
-    """expression : expression expression %prec CONCAT"""
-    p[0] = ('.', p[1], p[2])
+def p_factor_expr(p):
+    'factor : LPAREN expression RPAREN'
+    p[0] = p[2]
+
+
+# Error rule for syntax errors
+def p_error(p):
+    print(p)
+    print("Syntax error in input!")
+
+
+
+def p_expr_asterisk(p):
+    """expression : expression ASTERISK"""
+    p[0] = (p[2], p[1])
 
 
 class ENfa:
@@ -415,7 +430,7 @@ def make_enfa(ast):
         self.symbol = list(set(lhs_enfa.symbol) | set(rhs_enfa.symbol))
         self.symbol = sorted(self.symbol)
         if '()' not in self.symbol:
-            self.symbol = self.symbol + ['()']
+            self.symbol += ['()']
         lhs_enfa.func_dict[lhs_enfa.final[0]]['()'] = [rhs_enfa.initial[0]]
         self.func_dict = {**lhs_enfa.func_dict, **rhs_enfa.func_dict}
         for state in self.state:
@@ -461,12 +476,12 @@ lexer = lex.lex()
 parser = yacc.yacc()
 
 # Take user input
-# regex_input = input('regex > ')
+regex_input = input('regex > ')
 
 # Take file input
-regex_filename = sys.argv[1]
-regex_file = open(regex_filename, 'r')
-regex_input = regex_file.readline()
+# regex_filename = sys.argv[1]
+# regex_file = open(regex_filename, 'r')
+# regex_input = regex_file.readline()
 # Give the lexer some input. print lexed result.
 lexer.input(regex_input)
 regex_input = ''.join([x.value for x in lexer])
@@ -490,5 +505,5 @@ result_enfa.state_converting = list(result_enfa.todo_queue)
 result_enfa.convert_to_dfa()
 result_enfa.minimize()
 result_enfa.print_self()
-result_enfa.print_self_file()
+# result_enfa.print_self_file()
 
